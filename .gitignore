@@ -1,0 +1,6 @@
+build/
+.build/
+dist/
+secrets.env
+.DS_Store
+*.xcuserstate
