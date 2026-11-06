@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cumulus — a native macOS SoundCloud player</title>
+<meta name="description" content="A small, fast, native SoundCloud player for macOS. SwiftUI + AVPlayer, no web views, no dependencies, under 2 MB." />
+<meta property="og:title" content="Cumulus — native macOS SoundCloud player" />
+<meta property="og:description" content="Stream your SoundCloud from a clean, tiny, native Mac app. One-click login, song pages, offline downloads." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0b0b0f;
+    --bg-2: #121218;
+    --surface: #16161d;
+    --surface-2: #1d1d26;
+    --border: #262630;
+    --text: #f3f3f6;
+    --muted: #a0a0ad;
+    --faint: #6f6f7c;
+    --accent: #ff5500;
+    --accent-2: #ff8a3d;
+    --radius: 16px;
+    --maxw: 1080px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  a { color: inherit; text-decoration: none; }
+  .wrap { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 0 20px; }
+  .accent { color: var(--accent); }
+
+  /* ---- buttons ---- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-weight: 600; font-size: 15px;
+    padding: 13px 22px; border-radius: 12px;
+    border: 1px solid transparent; cursor: pointer;
+    transition: transform .15s ease, background .15s ease, border-color .15s ease;
+    white-space: nowrap;
+  }
+  .btn svg { width: 18px; height: 18px; }
+  .btn-primary { background: linear-gradient(180deg, var(--accent-2), var(--accent)); color: #fff; box-shadow: 0 8px 24px rgba(255,85,0,.3); }
+  .btn-primary:hover { transform: translateY(-2px); }
+  .btn-ghost { background: var(--surface); border-color: var(--border); color: var(--text); }
+  .btn-ghost:hover { background: var(--surface-2); transform: translateY(-2px); }
+
+  /* ---- nav ---- */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(11,11,15,.72);
+    backdrop-filter: saturate(160%) blur(14px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 62px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; }
+  .brand .mark { width: 30px; height: 30px; }
+  .nav-links { display: flex; align-items: center; gap: 26px; }
+  .nav-links a.lnk { color: var(--muted); font-size: 14px; font-weight: 500; transition: color .15s; }
+  .nav-links a.lnk:hover { color: var(--text); }
+  .nav-dl { padding: 9px 16px; font-size: 14px; }
+  @media (max-width: 720px) { .nav-links a.lnk { display: none; } }
+
+  /* ---- hero ---- */
+  .hero { position: relative; text-align: center; padding: 96px 0 56px; }
+  .glow { position: absolute; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
+  .glow::before, .glow::after {
+    content: ''; position: absolute; border-radius: 50%; filter: blur(90px); opacity: .5;
+  }
+  .glow::before { width: 520px; height: 520px; background: #ff550055; top: -180px; left: 50%; transform: translateX(-50%); }
+  .glow::after { width: 380px; height: 380px; background: #7a2bff33; top: 40px; right: -80px; }
+  .hero .inner { position: relative; z-index: 1; }
+  .hero .mark-lg { width: 96px; height: 96px; margin: 0 auto 22px; filter: drop-shadow(0 12px 30px rgba(255,85,0,.35)); }
+  .hero h1 { font-size: clamp(44px, 8vw, 80px); font-weight: 800; letter-spacing: -.03em; line-height: 1.02; }
+  .hero .tag { font-size: clamp(18px, 3vw, 24px); font-weight: 600; margin-top: 14px; }
+  .hero p.sub { color: var(--muted); font-size: 17px; max-width: 540px; margin: 16px auto 0; }
+  .cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
+  .meta { color: var(--faint); font-size: 13px; margin-top: 18px; letter-spacing: .01em; }
+  .meta b { color: var(--muted); font-weight: 600; }
+
+  /* ---- window screenshot ---- */
+  .shot { margin: 46px auto 0; max-width: 860px; }
+  .window {
+    border-radius: 14px; overflow: hidden; border: 1px solid var(--border);
+    background: var(--surface);
+    box-shadow: 0 40px 100px -30px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.02) inset;
+  }
+  .titlebar { height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  .window img { display: block; width: 100%; height: auto; }
+
+  /* ---- sections ---- */
+  section { padding: 70px 0; }
+  .eyebrow { color: var(--accent); font-weight: 700; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; }
+  .h2 { font-size: clamp(30px, 5vw, 44px); font-weight: 800; letter-spacing: -.02em; margin-top: 10px; }
+  .lead { color: var(--muted); font-size: 17px; max-width: 560px; margin-top: 12px; }
+  .center { text-align: center; } .center .lead { margin-left: auto; margin-right: auto; }
+
+  /* ---- features ---- */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 44px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: linear-gradient(180deg, var(--surface), var(--bg-2));
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 24px;
+    transition: transform .18s ease, border-color .18s ease;
+  }
+  .card:hover { transform: translateY(-4px); border-color: #35353f; }
+  .ico { width: 44px; height: 44px; border-radius: 11px; display: grid; place-items: center; margin-bottom: 16px;
+         background: rgba(255,85,0,.12); border: 1px solid rgba(255,85,0,.22); }
+  .ico svg { width: 22px; height: 22px; stroke: var(--accent); }
+  .card h3 { font-size: 17px; font-weight: 700; }
+  .card p { color: var(--muted); font-size: 14.5px; margin-top: 7px; }
+
+  /* ---- shortcuts ---- */
+  .keys { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 40px; margin-top: 40px; }
+  @media (max-width: 620px) { .keys { grid-template-columns: 1fr; } }
+  .keyrow { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 4px; border-bottom: 1px solid var(--border); }
+  .keyrow span { color: var(--muted); font-size: 15px; }
+  kbd {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px;
+    background: var(--surface-2); border: 1px solid var(--border); border-bottom-width: 2px;
+    border-radius: 7px; padding: 4px 9px; color: var(--text); white-space: nowrap;
+  }
+
+  /* ---- steps ---- */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 44px; }
+  @media (max-width: 760px) { .steps { grid-template-columns: 1fr; } }
+  .step { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 26px; position: relative; }
+  .step .n { font-size: 14px; font-weight: 800; color: var(--accent); background: rgba(255,85,0,.12); width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; margin-bottom: 16px; }
+  .step h4 { font-size: 16px; font-weight: 700; }
+  .step p { color: var(--muted); font-size: 14.5px; margin-top: 7px; }
+  .step code { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 2px 6px; font-size: 12.5px; color: var(--accent-2); }
+
+  /* ---- download band ---- */
+  .band { background: linear-gradient(135deg, rgba(255,85,0,.14), rgba(122,43,255,.1)); border: 1px solid var(--border); border-radius: 24px; text-align: center; padding: 54px 24px; margin: 0 20px; }
+  .band h2 { font-size: clamp(28px, 5vw, 40px); font-weight: 800; letter-spacing: -.02em; }
+  .band p { color: var(--muted); margin-top: 10px; }
+
+  /* ---- footer ---- */
+  footer { border-top: 1px solid var(--border); padding: 40px 0; margin-top: 70px; }
+  footer .wrap { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+  footer .brand { font-size: 15px; }
+  footer .links { display: flex; gap: 22px; }
+  footer a { color: var(--muted); font-size: 14px; } footer a:hover { color: var(--text); }
+  .disclaimer { color: var(--faint); font-size: 12.5px; text-align: center; max-width: 620px; margin: 22px auto 0; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<!-- reusable app-icon mark -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff8a3d"/><stop offset="1" stop-color="#ff5500"/>
+    </linearGradient>
+    <symbol id="mark" viewBox="0 0 100 100">
+      <rect x="8" y="8" width="84" height="84" rx="22" fill="url(#cg)"/>
+      <path fill="#fff" d="M72 62c6 0 11-5 11-11s-5-11-11-11c-1 0-2 0-3 .3C67 33 60 28 52 28c-9 0-16 6-17 14-6 1-11 6-11 12 0 6 5 11 11 11h37z"/>
+    </symbol>
+  </defs>
+</svg>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#top"><svg class="mark"><use href="#mark"/></svg> Cumulus</a>
+    <div class="nav-links">
+      <a class="lnk" href="#features">Features</a>
+      <a class="lnk" href="#shortcuts">Shortcuts</a>
+      <a class="lnk" href="#install">Install</a>
+      <a class="lnk" href="https://github.com/Kareem-3del/cumulus">GitHub</a>
+      <a class="btn btn-primary nav-dl" href="https://github.com/Kareem-3del/cumulus/releases/latest/download/Cumulus.dmg">Download</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="glow"></div>
+  <div class="wrap inner">
+    <svg class="mark-lg"><use href="#mark"/></svg>
+    <h1>Your SoundCloud,<br/><span class="accent">natively</span> on Mac.</h1>
+    <p class="tag">Small. Fast. No web views.</p>
+    <p class="sub">Cumulus is a clean SwiftUI player that streams your SoundCloud — likes, playlists, stream and recommendations — in a real Mac app that fits in under 2&nbsp;MB.</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="https://github.com/Kareem-3del/cumulus/releases/latest/download/Cumulus.dmg">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+        Download for macOS
+      </a>
+      <a class="btn btn-ghost" href="https://github.com/Kareem-3del/cumulus">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.21-3.37-1.21-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.27 2.75 1.05A9.3 9.3 0 0112 6.84c.85 0 1.71.12 2.51.34 1.91-1.32 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.6.69.49A10.02 10.02 0 0022 12.25C22 6.58 17.52 2 12 2z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+    <p class="meta"><b>Universal</b> · Apple Silicon &amp; Intel · macOS 14+ · <b>~1.8 MB</b></p>
+
+    <div class="shot">
+      <div class="window">
+        <div class="titlebar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
+        <img src="login.png" alt="Cumulus login screen" loading="lazy" />
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="features">
+  <div class="wrap center">
+    <p class="eyebrow">Everything a player should be</p>
+    <h2 class="h2">Built for the way you listen</h2>
+    <p class="lead">No Electron, no bundled browser — just AVPlayer and SwiftUI doing what they do best.</p>
+  </div>
+  <div class="wrap">
+    <div class="grid">
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg></div>
+        <h3>Tiny &amp; instant</h3>
+        <p>A fully native app under 2 MB that launches instantly and barely touches your memory.</p>
+      </div>
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg></div>
+        <h3>One-click login</h3>
+        <p>Sign in through your own browser where you're already logged in. Your password never touches the app.</p>
+      </div>
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg></div>
+        <h3>A Home made for you</h3>
+        <p>Recently played, recommendations from your taste, popular tracks in your genres, and new from your follows.</p>
+      </div>
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 2"/></svg></div>
+        <h3>Song pages</h3>
+        <p>Open any track for its stats, description, top comments — and a full list of related, recommended songs.</p>
+      </div>
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
+        <h3>Command palette</h3>
+        <p>Hit <kbd>⌘K</kbd> to search tracks, playlists and people instantly — or jump to any part of the app.</p>
+      </div>
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+        <h3>Timed comments</h3>
+        <p>The full Now Playing view shows SoundCloud's signature comments — click a timestamp to jump there.</p>
+      </div>
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg></div>
+        <h3>Download &amp; offline</h3>
+        <p>Save any track to disk and play it back without streaming — handy for the subway or a flight.</p>
+      </div>
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 009 9 9 9 0 11-9-9z"/></svg></div>
+        <h3>Sleep timer &amp; full player</h3>
+        <p>Waveform seek, shuffle, repeat, speed, a reorderable queue, autoplay of similar tracks and a sleep timer.</p>
+      </div>
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg></div>
+        <h3>Feels like macOS</h3>
+        <p>Media keys, Control Center, AirPods controls, and a mini player that lives in your menu bar.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="shortcuts">
+  <div class="wrap">
+    <p class="eyebrow">Keyboard first</p>
+    <h2 class="h2">Shortcuts for everything</h2>
+    <div class="keys">
+      <div class="keyrow"><span>Play / pause</span><kbd>Space</kbd></div>
+      <div class="keyrow"><span>Search everything</span><kbd>⌘ K</kbd></div>
+      <div class="keyrow"><span>Open Now Playing</span><kbd>⇧ ⌘ F</kbd></div>
+      <div class="keyrow"><span>Previous / next track</span><kbd>⌘ ← / →</kbd></div>
+      <div class="keyrow"><span>Skip 15 seconds</span><kbd>⌥ ⌘ ← / →</kbd></div>
+      <div class="keyrow"><span>Volume up / down</span><kbd>⌘ ↑ / ↓</kbd></div>
+      <div class="keyrow"><span>Like current track</span><kbd>⌘ L</kbd></div>
+      <div class="keyrow"><span>Open a SoundCloud link</span><kbd>⌘ O</kbd></div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap center">
+    <p class="eyebrow">Up and running in a minute</p>
+    <h2 class="h2">Install</h2>
+    <p class="lead">No App Store, no account on our end. Download, drag, and log in.</p>
+  </div>
+  <div class="wrap">
+    <div class="steps">
+      <div class="step">
+        <div class="n">1</div>
+        <h4>Download the DMG</h4>
+        <p>Grab <code>Cumulus.dmg</code> and open it. It's a universal build for Apple Silicon and Intel.</p>
+      </div>
+      <div class="step">
+        <div class="n">2</div>
+        <h4>Drag to Applications</h4>
+        <p>Drop Cumulus into your Applications folder. First launch, right-click the app and choose <code>Open</code> once.</p>
+      </div>
+      <div class="step">
+        <div class="n">3</div>
+        <h4>Log in &amp; play</h4>
+        <p>Click <b>Log in with SoundCloud</b>, approve in your browser, and you're listening. No key, no setup.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="band">
+    <h2>Ready to listen?</h2>
+    <p>Free, open source, and tiny. Works on macOS 14 and newer.</p>
+    <div class="cta" style="margin-top:26px">
+      <a class="btn btn-primary" href="https://github.com/Kareem-3del/cumulus/releases/latest/download/Cumulus.dmg">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+        Download Cumulus
+      </a>
+      <a class="btn btn-ghost" href="https://github.com/Kareem-3del/cumulus/releases">All releases</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="#top"><svg class="mark" style="width:26px;height:26px"><use href="#mark"/></svg> Cumulus</a>
+    <div class="links">
+      <a href="https://github.com/Kareem-3del/cumulus">GitHub</a>
+      <a href="https://github.com/Kareem-3del/cumulus/releases/latest">Download</a>
+      <a href="https://github.com/Kareem-3del/cumulus/blob/main/LICENSE">MIT License</a>
+    </div>
+  </div>
+  <p class="disclaimer">
+    Cumulus is an unofficial, independent, open-source client. It is not affiliated with, endorsed by, or sponsored by SoundCloud.
+    SoundCloud is a trademark of SoundCloud Global Limited &amp; Co. KG.
+  </p>
+</footer>
+
+</body>
+</html>
