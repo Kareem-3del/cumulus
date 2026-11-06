@@ -18,6 +18,12 @@ No web views. No Electron. No dependencies. Just a clean SwiftUI app that stream
 
 <br/>
 
+### [⬇&nbsp; Download Cumulus.dmg](https://github.com/Kareem-3del/cumulus/releases/latest/download/Cumulus.dmg)
+
+<sub>Universal · Apple Silicon & Intel · macOS 14+</sub>
+
+<br/>
+
 <img src="docs/login.png" width="720" alt="Cumulus login screen" />
 
 </div>
@@ -48,15 +54,20 @@ The SoundCloud website is heavy and the desktop options are Electron wrappers. C
 
 ## Install
 
+**The easy way —** [**download the latest `Cumulus.dmg`**](https://github.com/Kareem-3del/cumulus/releases/latest), open it, and drag **Cumulus** onto **Applications**. Then just click **Log in with SoundCloud** — no key or setup needed.
+
+> First launch: because the app isn't notarized, right-click **Cumulus.app → Open → Open** the first time (macOS Gatekeeper asks once).
+
+### Build it yourself
+
 Requires macOS 14 (Sonoma) or newer and Xcode command-line tools.
 
 ```bash
 git clone https://github.com/Kareem-3del/cumulus.git
 cd cumulus
 ./build.sh install     # builds Cumulus.app and copies it to /Applications
+./make-dmg.sh          # or package a drag-to-install DMG into dist/
 ```
-
-> First launch: because the app isn't notarized, right-click **Cumulus.app → Open** the first time (macOS Gatekeeper).
 
 ### Set up login
 
